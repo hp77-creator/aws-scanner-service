@@ -7,17 +7,13 @@ import lombok.Data;
 import java.util.Date;
 import java.util.UUID;
 
-@Entity(name = "findings")
+@Entity(name = "jobs")
 @Data
-public class Finding {
+public class Job {
     @Id
-    private Long id;
-    private UUID job_id;
+    private UUID id;
     private String bucket;
-    private String key;
-    private String detector;
-    private String masked_match;
-    private String context;
-    private int byte_offset;
+    private String prefix;
     private Date created_at;
+    private Date updated_at;
 }
