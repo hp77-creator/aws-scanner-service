@@ -1,0 +1,48 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant API as API Service (Controller)
+    participant DB as Postgres DB
+    participant S3 as S3 Bucket
+    participant SQS as SQS Queue
+    participant Worker as Scanner Worker
+
+    Note over User, API: Phase 1: The Trigger
+    User->>API: POST /scan {bucket, prefix}
+    API->>DB: INSERT INTO jobs (status='PENDING')
+    API-->User: 202 Accepted {job_id}
+
+    Note right of API: Background Thread / Async
+    API->>S3: List Objects (bucket, prefix)
+    loop For each Object
+        API->>DB: INSERT INTO job_objects (status='queued')
+        API->>SQS: Send Message {job_id, bucket, key, etag}
+    end
+
+    Note over Worker, DB: Phase 2: The Processing
+    loop Constant Polling
+        Worker->>SQS: Receive Message (Visibility Timeout starts)
+
+        Note right of Worker: Idempotency Check
+        Worker->>DB: Check job_objects (bucket, key, etag)
+        alt Status is 'succeeded'
+            Worker-->>SQS: Delete Message (Skip)
+        else Status is 'queued' or 'failed'
+            Worker->>DB: UPDATE job_objecs SET status = 'processing'
+
+            Worker->>S3: Get Object Stream
+            Worker->>Worker: Stream & Scan (Regex + Luhn)
+
+            alt Sensitive Data Found
+                Worker->>DB: INSERT INTO findings
+            end
+
+            Worker->>DB: UPDATE job_objects SET status='succeeded'
+            Worker->>SQS: Delete Message (Ack)
+        end
+    end
+
+    Note over User, DB: Phase 3: The Results
+    User->>API: GET /jobs/{job_id}
+    API->>DB: SELECT COUNT(*) FROM job_objects WHERE job_id={job_id}
+    API-->User: {queued: 5,succeeded: 45, failed: 0}
