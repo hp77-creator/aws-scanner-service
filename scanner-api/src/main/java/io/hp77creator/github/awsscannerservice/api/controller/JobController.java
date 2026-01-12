@@ -27,10 +27,7 @@ public class JobController {
     @PostMapping("/scan")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public ScanResponse createScan(@Valid @RequestBody ScanRequest request) {
-        // Create job immediately
         Job job = scanService.createScanJob(request.getBucket(), request.getPrefix());
-        
-        // Start async enumeration and enqueueing
         scanService.enumerateAndEnqueue(job.getJobId(), request.getBucket(), request.getPrefix());
         
         return ScanResponse.builder()

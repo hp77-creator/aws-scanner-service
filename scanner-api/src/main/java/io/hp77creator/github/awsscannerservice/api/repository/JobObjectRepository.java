@@ -18,6 +18,6 @@ public interface JobObjectRepository extends JpaRepository<JobObject, JobObjectI
     /**
      * Get aggregated counts for all statuses for a given job
      */
-    @Query("SELECT jo.status, COUNT(jo) FROM job_objects jo WHERE jo.id.jobId = :jobId GROUP BY jo.status")
+    @Query("SELECT jo.status, COUNT(jo) FROM JobObject jo WHERE jo.id.jobId = :jobId GROUP BY jo.status")
     Object[][] countByJobIdGroupByStatus(@Param("jobId") UUID jobId);
 }

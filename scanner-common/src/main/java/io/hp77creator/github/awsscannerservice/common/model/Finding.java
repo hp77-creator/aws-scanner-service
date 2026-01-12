@@ -1,27 +1,51 @@
 package io.hp77creator.github.awsscannerservice.common.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity(name = "findings")
+@Entity
+@Table(name = "findings")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Finding {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(name = "job_id", nullable = false)
     private UUID jobId;
+    
+    @Column(nullable = false)
     private String bucket;
+    
+    @Column(nullable = false)
     private String key;
-    private String detector;
+    
+    @Column(name = "detector_type", nullable = false)
+    private String detectorType;
+    
+    @Column(name = "masked_match", nullable = false)
     private String maskedMatch;
+    
+    @Column(columnDefinition = "TEXT")
     private String context;
-    private Integer byteOffset;
-    private Date createdAt;
+    
+    @Column(name = "byte_offset", nullable = false)
+    private Long byteOffset;
+    
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 }

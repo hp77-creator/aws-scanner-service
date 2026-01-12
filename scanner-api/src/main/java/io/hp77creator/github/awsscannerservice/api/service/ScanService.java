@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -51,24 +51,15 @@ public class ScanService {
         this.objectMapper = objectMapper;
     }
     
-    /**
-     * Create a scan job and return immediately
-     */
     public Job createScanJob(String bucket, String prefix) {
-        Job job = new Job();
-        job.setJobId(UUID.randomUUID());
-        job.setBucket(bucket);
-        job.setPrefix(prefix);
-        job.setCreatedAt(new Date());
-        job.setUpdatedAt(new Date());
-        
+        Job job = Job.builder()
+                .jobId(UUID.randomUUID())
+                .bucket(bucket)
+                .prefix(prefix)
+                .build();
         return jobRepository.save(job);
     }
     
-    /**
-     * Asynchronously enumerate S3 objects and enqueue to SQS
-     * This runs in a separate thread pool
-     */
     @Async
     public void enumerateAndEnqueue(UUID jobId, String bucket, String prefix) {
         log.info("Starting S3 enumeration for job: {}, bucket: {}, prefix: {}", 
@@ -91,26 +82,23 @@ public class ScanService {
             for (var response : paginator) {
                 for (S3Object s3Object : response.contents()) {
                     try {
-                        // Skip directories (objects ending with /)
                         if (s3Object.key().endsWith("/")) {
                             continue;
                         }
                         
-                        // Create job_object record
-                        JobObjectId jobObjectId = new JobObjectId();
-                        jobObjectId.setJobId(jobId);
-                        jobObjectId.setBucket(bucket);
-                        jobObjectId.setKey(s3Object.key());
-                        jobObjectId.setEtag(s3Object.eTag());
-                        
-                        JobObject jobObject = new JobObject();
-                        jobObject.setId(jobObjectId);
-                        jobObject.setStatus(JobStatus.QUEUED);
-                        jobObject.setUpdatedAt(new Date());
-                        
+                        JobObjectId jobObjectId = JobObjectId.builder()
+                                .jobId(jobId)
+                                .bucket(bucket)
+                                .key(s3Object.key())
+                                .etag(s3Object.eTag())
+                                .build();
+
+                        JobObject jobObject = JobObject.builder()
+                                .id(jobObjectId)
+                                .status(JobStatus.QUEUED)
+                                .build();
                         jobObjectRepository.save(jobObject);
                         
-                        // Send SQS message
                         String messageBody = createSqsMessage(jobId, bucket, s3Object.key(), s3Object.eTag());
                         sqsClient.sendMessage(SendMessageRequest.builder()
                                 .queueUrl(queueUrl)
@@ -138,9 +126,6 @@ public class ScanService {
         }
     }
     
-    /**
-     * Create SQS message body with job information
-     */
     private String createSqsMessage(UUID jobId, String bucket, String key, String etag) {
         try {
             Map<String, String> message = new HashMap<>();
