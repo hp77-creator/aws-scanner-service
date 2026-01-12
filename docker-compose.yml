@@ -1,0 +1,136 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: scanner-postgres
+    environment:
+      POSTGRES_DB: scanner_db
+      POSTGRES_USER: scanner
+      POSTGRES_PASSWORD: scanner123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scanner -d scanner_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - scanner-network
+
+  # LocalStack - AWS Services Emulation (S3 + SQS)
+  localstack:
+    image: localstack/localstack:latest
+    container_name: scanner-localstack
+    environment:
+      SERVICES: s3,sqs
+      DEBUG: 1
+      DATA_DIR: /tmp/localstack/data
+      DOCKER_HOST: unix:///var/run/docker.sock
+    ports:
+      - "4566:4566"  # Unified endpoint for all services
+    volumes:
+      - localstack_data:/tmp/localstack
+      - ./localstack/init-localstack.sh:/etc/localstack/init/ready.d/init-localstack.sh
+      - ./localstack/test-data:/test-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - scanner-network
+
+  # Scanner API Service
+  scanner-api:
+    build:
+      context: .
+      dockerfile: scanner-api/Dockerfile
+    container_name: scanner-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/scanner_db
+      SPRING_DATASOURCE_USERNAME: scanner
+      SPRING_DATASOURCE_PASSWORD: scanner123
+      
+      # AWS Configuration (LocalStack)
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_SQS_QUEUE_URL: http://localstack:4566/000000000000/scanner-queue
+      
+      # Spring Boot Configuration
+      SPRING_PROFILES_ACTIVE: local
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_IO_HP77CREATOR: DEBUG
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - scanner-network
+    restart: unless-stopped
+
+  # Scanner Worker Service
+  scanner-worker:
+    build:
+      context: .
+      dockerfile: scanner-worker/Dockerfile
+    container_name: scanner-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+      scanner-api:
+        condition: service_healthy
+    environment:
+      # Database Configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/scanner_db
+      SPRING_DATASOURCE_USERNAME: scanner
+      SPRING_DATASOURCE_PASSWORD: scanner123
+      
+      # AWS Configuration (LocalStack)
+      AWS_REGION: us-east-1
+      AWS_ENDPOINT: http://localstack:4566
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_SQS_QUEUE_URL: http://localstack:4566/000000000000/scanner-queue
+      
+      # Spring Boot Configuration
+      SPRING_PROFILES_ACTIVE: local
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_IO_HP77CREATOR: DEBUG
+      
+      # Flyway Configuration (disable for worker)
+      SPRING_FLYWAY_ENABLED: false
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "java"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    networks:
+      - scanner-network
+    restart: unless-stopped
+
+networks:
+  scanner-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  localstack_data:
