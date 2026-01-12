@@ -7,10 +7,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Detects US phone numbers in various formats.
- * Patterns: (XXX) XXX-XXXX, XXX-XXX-XXXX, XXX.XXX.XXXX, XXXXXXXXXX
- */
+
 @Component
 public class PhoneDetector implements Detector {
 

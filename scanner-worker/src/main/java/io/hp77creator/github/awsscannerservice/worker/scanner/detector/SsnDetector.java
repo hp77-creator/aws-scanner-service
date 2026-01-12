@@ -7,14 +7,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Detects US Social Security Numbers (SSN).
- * Pattern: XXX-XX-XXXX (where X is a digit)
- */
 @Component
 public class SsnDetector implements Detector {
 
-    // SSN pattern: 3 digits, dash, 2 digits, dash, 4 digits
     private static final Pattern SSN_PATTERN = Pattern.compile("\\b\\d{3}-\\d{2}-\\d{4}\\b");
 
     @Override

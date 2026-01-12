@@ -43,6 +43,8 @@ logs/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+terraform.tfvars
+terraform/keys
 
 # Docker
 docker-compose.override.yml

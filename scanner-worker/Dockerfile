@@ -13,6 +13,9 @@ COPY scanner-common/src ./scanner-common/src
 COPY scanner-worker/pom.xml ./scanner-worker/
 COPY scanner-worker/src ./scanner-worker/src
 
+# Copy scanner-api pom to satisfy reactor requirements
+COPY scanner-api/pom.xml ./scanner-api/
+
 # Build the application
 # -pl: project list (build only scanner-worker)
 # -am: also make (build dependencies like scanner-common)

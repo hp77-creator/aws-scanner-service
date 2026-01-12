@@ -15,38 +15,39 @@ import java.net.URI;
  */
 @Configuration
 public class AwsConfig {
-    
+
     @Value("${aws.region:us-east-1}")
     private String region;
-    
+
     @Value("${aws.endpoint:#{null}}")
     private String endpoint;
-    
+
     @Bean
     public S3Client s3Client() {
         var builder = S3Client.builder()
                 .region(Region.of(region))
                 .credentialsProvider(DefaultCredentialsProvider.create());
-        
+
         // Support for LocalStack or custom endpoints
         if (endpoint != null && !endpoint.isEmpty()) {
             builder.endpointOverride(URI.create(endpoint));
+            builder.forcePathStyle(true);
         }
-        
+
         return builder.build();
     }
-    
+
     @Bean
     public SqsClient sqsClient() {
         var builder = SqsClient.builder()
                 .region(Region.of(region))
                 .credentialsProvider(DefaultCredentialsProvider.create());
-        
+
         // Support for LocalStack or custom endpoints
         if (endpoint != null && !endpoint.isEmpty()) {
             builder.endpointOverride(URI.create(endpoint));
         }
-        
+
         return builder.build();
     }
 }

@@ -36,6 +36,7 @@ public class AwsConfig {
         // For LocalStack: set custom endpoint
         if (awsEndpoint != null && !awsEndpoint.isEmpty()) {
             builder.endpointOverride(URI.create(awsEndpoint));
+            builder.forcePathStyle(true);
         }
 
         return builder.build();
