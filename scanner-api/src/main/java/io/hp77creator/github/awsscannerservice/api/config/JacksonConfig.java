@@ -1,0 +1,18 @@
+package io.hp77creator.github.awsscannerservice.api.config;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Jackson ObjectMapper configuration
+ * Provides ObjectMapper bean for JSON serialization/deserialization
+ */
+@Configuration
+public class JacksonConfig {
+    
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+}
